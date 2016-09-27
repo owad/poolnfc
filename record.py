@@ -37,7 +37,7 @@ def send_result(
     return res.status_code == requests.codes.created
 
 
-submit_result('123', '456', granny=False)
+send_result('123', '456', granny=False)
 
 # TEST THINGS...
 data = json.loads(_create_session().get(URL_PLAYER).content)
