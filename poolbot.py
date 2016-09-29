@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 import requests
 
 from config import (
@@ -45,3 +46,4 @@ def send_result(
 #     for p in data
 # ]
 # print '\n'.join(check)
+

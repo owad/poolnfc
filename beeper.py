@@ -1,10 +1,8 @@
-import RPi.GPIO as GPIO
-from time import sleep
+# -*- coding: utf8 -*-
 
 
-def beep(beeps=1, length=0.25):
-    for i in range(beeps):
-        # set pin to HIGH
-        print "BEEP!!1"
-        sleep(length)
-        # set ping to LOW
+def beep(beeps=1, length=1):
+    # set pin to HIGH
+    print "B{}P!!1 ".format("EEE" * length) * beeps
+    # set ping to LOW
+
