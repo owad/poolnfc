@@ -3,7 +3,7 @@
 import RPi.GPIO as GPIO
 import MFRC522
 import signal
-from datetime.datetime import now
+from datetime import datetime as dt
 from time import sleep
 
 from poolbot import send_result
@@ -62,12 +62,12 @@ while continue_reading:
             beep()
             if players_count == 1:
                 print "Player #1 registered."  # TODO: use slack names
-                player_1_reg_time = now()
+                player_1_reg_time = dt.now()
             if players_count == 2:
                 print "Player #2 registered."  # TODO: use slack names
-                player_2_reg_time = now()
+                player_2_reg_time = dt.now()
 
-        if players_count < 2 and (now() - player_1_reg_time).seconds > 5:
+        if players_count < 2 and (dt.now() - player_1_reg_time).seconds > 5:
             print "Players removed. Register both players faster."
             reset_game()
 
@@ -76,9 +76,9 @@ while continue_reading:
             continue
         else:
             print "Players registered. Game begins!"
-            game_timer = now()
+            game_timer = dt.now()
 
-        time_elapsed = (now() - game_timer).seconds
+        time_elapsed = (dt.now() - game_timer).seconds
 
         if time_elapsed > 10:
             winner = players.index(uid)
