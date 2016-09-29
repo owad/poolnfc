@@ -1,10 +1,8 @@
-import json
 import requests
 
 from config import (
     SERVER_TOKEN,
     URL_MATCH,
-    URL_PLAYER,
     POOL_CHANNEL_ID,
 )
 
@@ -22,7 +20,7 @@ def send_result(
     loser_id,
     granny=False,
 ):
-    """ Sends results of a game to the poolbot server"""
+    """ Sends results of the game to the poolbot server"""
     s = _create_session()
 
     res = s.post(
@@ -37,14 +35,13 @@ def send_result(
     return res.status_code == requests.codes.created
 
 
-send_result('123', '456', granny=False)
-
 # TEST THINGS...
-data = json.loads(_create_session().get(URL_PLAYER).content)
-
-check = [
-    'ID %s has %d and %d games played' % (p['slack_id'], p['total_elo'], p['total_match_count'])
-    for p in data
-]
-
-print '\n'.join(check)
+# import json
+# from config import URL_PLAYER
+# send_result('123', '456', granny=False)
+# data = json.loads(_create_session().get(URL_PLAYER).content)
+# check = [
+#     'ID %s has %d and %d games played' % (p['slack_id'], p['total_elo'], p['total_match_count'])
+#     for p in data
+# ]
+# print '\n'.join(check)
