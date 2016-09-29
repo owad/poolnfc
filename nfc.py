@@ -79,10 +79,9 @@ while continue_reading:
         if uid in players:  # Only current players are allowed to end the game
             if game_timer and time_elapsed > 10:
                 winner = players.index(uid)
-                logging.debug("Player #{} won".format(winner + 1))
+                logging.debug("Player #{} won".format(winner + 1))  # TODO: use slack names
                 logging.debug("Game took {} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60))
-                # TODO: post to the poolbot-server, winner/loser values should be slack user IDs
-                # send_result(
+                # send_result(  # TODO: use slack user IDs
                 #     players.pop(winner),  # winner
                 #     players.pop(),  # loser
                 #     granny=False,
