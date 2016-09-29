@@ -76,20 +76,20 @@ while continue_reading:
             locals()['player_{}_reg_time'.format(players_count)] = dt.now()
             beep()
 
-        if uid in players:  # Only current players are allowed to end the game
-            if game_timer and time_elapsed > 10:
-                winner = players.index(uid)
-                logging.debug("Player #{} won".format(winner + 1))  # TODO: use slack names
-                logging.debug("Game took {} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60))
-                # send_result(  # TODO: use slack user IDs
-                #     players.pop(winner),  # winner
-                #     players.pop(),  # loser
-                #     granny=False,
-                # )
-                beep(beeps=2, length=2)
-                reset_game(sound=False)
-                logging.debug("Waiting for new players...")
-                sleep(5)
+        if uid in players and game_timer:  # Only current players are allowed to end the game
+            winner = players.index(uid)
+            logging.debug("Player #{} won".format(winner + 1))  # TODO: use slack names
+            logging.debug("Game took {} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60))
+            # send_result(  # TODO: use slack user IDs
+            #     players.pop(winner),  # winner
+            #     players.pop(),  # loser
+            #     granny=False,
+            # )
+            beep(beeps=2, length=2)
+            reset_game(sound=False)
+            logging.debug("====== GAME OVER ======")
+            logging.debug("")
+            sleep(5)
 
     if player_1_reg_time and players_count < 2 and (dt.now() - player_1_reg_time).seconds > 5:
         logging.debug("Players removed. Register both players faster.")
