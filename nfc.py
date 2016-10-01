@@ -47,8 +47,6 @@ def reset_game(sound=True):
     global player_1_reg_time
     global player_2_reg_time
     global players_count
-    global player_1_data
-    global player_2_data
 
     players = list()
     game_timer = None
@@ -77,7 +75,6 @@ while continue_reading:
             print "=" * 50
             username = raw_input("NFC UID captured. Enter your username: ")
             poolbot.add_user(username, uid)
-            print "=" * 50
             continue
 
         if uid not in players and players_count < 2:
@@ -94,16 +91,16 @@ while continue_reading:
             winner, winner_data = poolbot.get_user(uid)
             loser, loser_data = poolbot.get_user(loser_uid)
 
-            logging.debug("{} has won the match.".format(winner))  # TODO: use slack names
+            logging.debug("{} has won a match against {}.".format(winner, loser))
             logging.debug("Game took {} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60))
 
             print
             print "Winner: {}. Slack ID '{}'.".format(winner, winner_data['slack_id'])
             print "Loser: {}. Slack ID '{}'.".format(loser, loser_data['slack_id'])
             print
-            # send_result(  # TODO: use slack user IDs
-            #     players.pop(winner),  # winner
-            #     players.pop(),  # loser
+            # send_result(
+            #     winner_data['slack_id'],
+            #     loser_data['slack_id'],
             #     granny=False,
             # )
             beep(beeps=2, length=2)
