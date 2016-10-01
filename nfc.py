@@ -2,22 +2,21 @@
 # -*- coding: utf8 -*-
 import logging
 import signal
+import sys
 from datetime import datetime as dt
 from time import sleep
 
 import RPi.GPIO as GPIO
 
+import config
 import MFRC522
 from beeper import beep
+import poolbot
+
 
 continue_reading = True
 
-logging.basicConfig(
-    filename='games.log',
-    format='%(asctime)s %(message)s',
-    datefmt='%Y-%d-%m %I:%M:%S %p',
-    level=logging.DEBUG,
-)
+LOOP_MODE = config.USER_ADD_MODE if len(sys.argv) > 1 else config.GAME_MODE
 
 
 # Capture SIGINT for cleanup when the script is aborted
@@ -48,6 +47,9 @@ def reset_game(sound=True):
     global player_1_reg_time
     global player_2_reg_time
     global players_count
+    global player_1_data
+    global player_2_data
+
     players = list()
     game_timer = None
     player_1_reg_time = None
@@ -67,19 +69,38 @@ while continue_reading:
     status, uid = nfc_reader.MFRC522_Anticoll()
 
     if status == nfc_reader.MI_OK:
+        uid = '-'.join(map(str, uid))
+
         logging.debug("UID: {}".format(uid))
+
+        if LOOP_MODE == config.USER_ADD_MODE:
+            print "=" * 50
+            username = raw_input("NFC UID captured. Enter your username: ")
+            poolbot.add_user(username, uid)
+            print "=" * 50
+            continue
 
         if uid not in players and players_count < 2:
             players.append(uid)
             players_count = len(players)
-            logging.debug("Player #{} registered.".format(players_count))  # TODO: use slack names
+            username, user_data = poolbot.get_user(uid)
             locals()['player_{}_reg_time'.format(players_count)] = dt.now()
+            logging.debug("{} registered.".format(username))
             beep()
 
         if uid in players and game_timer:  # Only current players are allowed to end the game
-            winner = players.index(uid)
-            logging.debug("Player #{} won".format(winner + 1))  # TODO: use slack names
+            players.remove(uid)
+            loser_uid = players.pop()
+            winner, winner_data = poolbot.get_user(uid)
+            loser, loser_data = poolbot.get_user(loser_uid)
+
+            logging.debug("{} has won the match.".format(winner))  # TODO: use slack names
             logging.debug("Game took {} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60))
+
+            print
+            print "Winner: {}. Slack ID '{}'.".format(winner, winner_data['slack_id'])
+            print "Loser: {}. Slack ID '{}'.".format(loser, loser_data['slack_id'])
+            print
             # send_result(  # TODO: use slack user IDs
             #     players.pop(winner),  # winner
             #     players.pop(),  # loser
@@ -91,8 +112,8 @@ while continue_reading:
             logging.debug("")
             sleep(5)
 
-    if player_1_reg_time and players_count < 2 and (dt.now() - player_1_reg_time).seconds > 5:
-        logging.debug("Players removed. Register both players faster.")
+    if player_1_reg_time and players_count < 2 and (dt.now() - player_1_reg_time).seconds > 15:
+        logging.debug("Resetting the game. Register both players faster (within 15 seconds).")
         reset_game()
 
     # Never go past this point if players haven't registered
@@ -105,5 +126,4 @@ while continue_reading:
         game_timer = dt.now()
 
     time_elapsed = (dt.now() - game_timer).seconds
-
 
