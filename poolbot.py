@@ -1,6 +1,7 @@
 # -*- coding: utf8 -*-
 import json
 import logging
+import os
 
 import requests
 import shelve
@@ -10,6 +11,7 @@ from config import (
     URL_MATCH,
     URL_PLAYER,
     POOL_CHANNEL_ID,
+    ROOT_PATH,
 )
 
 
@@ -46,7 +48,7 @@ def add_user(username, nfc_uid):
     Tie NFC tag's UID(s) with a slack/potato user.
     You can add more than one tag UID per user.
     """
-    db = shelve.open('users.db', writeback=True)
+    db = shelve.open(os.path.join(ROOT_PATH, 'users.db'), writeback=True)
     if username in db:
         # Check this UID isn't registered with another user.
         # Abort with a message if so.
@@ -97,6 +99,6 @@ def get_user(nfc_uid):
     Finds and return username/user data pairs from the local db.
     Raises IndexError if user not in the db.
     """
-    db = shelve.open('users.db')
+    db = shelve.open(os.path.join(ROOT_PATH, 'users.db'))
     return filter(lambda usr: nfc_uid in usr[1]['uids'], db.items()).pop()
 
