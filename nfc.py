@@ -34,7 +34,7 @@ signal.signal(signal.SIGINT, end_read)
 nfc_reader = MFRC522.MFRC522()
 
 # Some Pool vars
-players = list()
+players = dict()
 game_timer = None
 player_1_reg_time = None
 player_2_reg_time = None
@@ -48,7 +48,7 @@ def reset_game(sound=True):
     global player_2_reg_time
     global players_count
 
-    players = list()
+    players = dict()
     game_timer = None
     player_1_reg_time = None
     player_2_reg_time = None
@@ -79,35 +79,32 @@ while continue_reading:
 
         if uid not in players and players_count < 2:
             try:
-                username, user_data = poolbot.get_user(uid)
+                user_data = poolbot.get_user(uid)
             except IndexError:
                 logging.debug("NFC tag not tied with any user.")
                 continue
 
-            players.append(uid)
+            user_data = poolbot.get_user(uid)
+            players[uid] = user_data
+
             players_count = len(players)
             locals()['player_{}_reg_time'.format(players_count)] = dt.now()
-            logging.debug("{} registered.".format(username))
+            logging.debug("{} registered.".format(user_data['username']))
             beep()
 
         if uid in players and game_timer:  # Only current players are allowed to end the game
-            players.remove(uid)
-            loser_uid = players.pop()
-            winner, winner_data = poolbot.get_user(uid)
-            loser, loser_data = poolbot.get_user(loser_uid)
+            winner_data = players.pop(uid)
+            loser_data = players.values()[0]
 
-            logging.debug("{} has won a match against {}.".format(winner, loser))
+            logging.debug("{} has won a match against {}.".format(winner_data['username'], loser_data['username']))
             logging.debug("Game took {} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60))
 
-            print
-            print "Winner: {}. Slack ID '{}'.".format(winner, winner_data['slack_id'])
-            print "Loser: {}. Slack ID '{}'.".format(loser, loser_data['slack_id'])
-            print
-            # send_result(
-            #     winner_data['slack_id'],
-            #     loser_data['slack_id'],
-            #     granny=False,
-            # )
+            poolbot.send_result_to_slack(
+                winner_data['slack_id'],
+                loser_data['slack_id'],
+                "{} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60),
+            )
+
             beep(beeps=2, length=2)
             reset_game(sound=False)
             logging.debug("====== GAME OVER ======")
@@ -126,6 +123,9 @@ while continue_reading:
         logging.debug("Players registered. Game begins!")
         beep(length=3)
         game_timer = dt.now()
+        poolbot.send_game_start_to_slack(
+            *[p['slack_id'] for p in players.values()]
+        )
 
     time_elapsed = (dt.now() - game_timer).seconds
 
