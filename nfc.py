@@ -22,7 +22,6 @@ loop_mode = config.USER_ADD_MODE if len(sys.argv) > 1 and sys.argv[1] != 'start'
 # Capture SIGINT for cleanup when the script is aborted
 def end_read(signal, frame):
     global continue_reading
-    logging.debug("Ctrl+C captured, ending read.")
     continue_reading = False
     GPIO.cleanup()
 

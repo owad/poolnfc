@@ -1,6 +1,5 @@
 # -*- coding: utf8 -*-
 import json
-import logging
 import os
 import shelve
 
@@ -90,14 +89,13 @@ def add_user(username, nfc_uid):
     try:
         s = _create_session()
         data = json.loads(s.get(URL_PLAYER).content)
-    except Exception, e:
-        logging.exception("Could not retrieve users from the poolbot server.")
-        logging.exception(e)
+    except ValueError:
+        print "Could not retrieve users from the poolbot server.")
         return
 
     found = filter(lambda x: x['name'] == username, data)
     if not found:
-        logging.error("Username '{}' not found on the poolbot server.".format(username))
+        print "Username '{}' not found on the poolbot server.".format(username)
         return
 
     user = found[0]
@@ -108,8 +106,8 @@ def add_user(username, nfc_uid):
         all_other_users = {usr[0]: usr[1] for usr in db.items() if usr[0] != username}
         found = filter(lambda a: nfc_uid in a[1]['uids'], all_other_users.items())
         if found:
-            logging.warning(nfc_uid)
-            logging.warning("This NFC tag has been already assigned to {}.".format(found[0][0]))
+            print nfc_uid
+            print "This NFC tag has been already assigned to {}.".format(found[0][0])
             return
 
         db[username]['uids'].add(nfc_uid)
@@ -122,7 +120,7 @@ def add_user(username, nfc_uid):
         }
 
     db.close()
-    logging.debug("This NFC tag has been assigned to {}".format(username))
+    print "This NFC tag has been assigned to {}".format(username)
 
 
 def get_user(nfc_uid):
