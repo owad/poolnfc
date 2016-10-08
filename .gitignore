@@ -1,4 +1,6 @@
 .idea/
 *.pyc
 games.log
+.cache
+*.swp
 

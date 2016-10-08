@@ -1,22 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
+from datetime import datetime as dt, timedelta
 import logging
+import RPi.GPIO as GPIO
 import signal
 import sys
-from datetime import datetime as dt
-from time import sleep
 
-import RPi.GPIO as GPIO
-
-import config
-import MFRC522
 from beeper import beep
+import MFRC522
 import poolbot
-
-
-continue_reading = True
-
-loop_mode = config.USER_ADD_MODE if len(sys.argv) > 1 and sys.argv[1] != 'start' else config.GAME_MODE
 
 
 # Capture SIGINT for cleanup when the script is aborted
@@ -29,102 +21,116 @@ def end_read(signal, frame):
 # Hook the SIGINT
 signal.signal(signal.SIGINT, end_read)
 
-# Create an object of the class MFRC522
-nfc_reader = MFRC522.MFRC522()
 
-# Some Pool vars
-players = dict()
-game_timer = None
-player_1_reg_time = None
-player_2_reg_time = None
-players_count = 0
+class Game(object):
 
+    def __init__(self):
+        self.players = dict()
+        self.timer = None
+        self.nfc_reader = MFRC522.MFRC522()
 
-def reset_game(sound=True):
-    global players
-    global game_timer
-    global player_1_reg_time
-    global player_2_reg_time
-    global players_count
+    @property
+    def players_count(self):
+        return len(self.players)
 
-    players = dict()
-    game_timer = None
-    player_1_reg_time = None
-    player_2_reg_time = None
-    players_count = 0
+    @property
+    def time_elapsed(self):
+        if self.timer is None:
+            return 0
+        return (dt.now() - self.timer).seconds
 
-    if sound:
-        beep(beeps=3)
+    @property
+    def game_on(self):
+        return bool(self.timer)
 
+    def game_can_start(self):
+        return self.players_count == 2
 
-while continue_reading:
+    def reset(self):
+        logging.debug("Resetting the game. Register both players faster (within 15 seconds).")
+        self.players = dict()
+        self.timer = None
 
-    # Scan for cards
-    status, TagType = nfc_reader.MFRC522_Request(nfc_reader.PICC_REQIDL)
+    def read_uid(self):
+        """
+        Checks if NFC tag is available (within the reader's sight)
+        :return: uid (or None)
+        """
+        reader_status, reader_uid = self.nfc_reader.MFRC522_Anticoll()
+        if reader_status == self.nfc_reader.MI_OK:
+            return '-'.join(map(str, reader_uid))
+        return None
 
-    # Get the UID of the card
-    status, uid = nfc_reader.MFRC522_Anticoll()
+    def should_reset(self):
+        return self.time_elapsed > 15 and self.players_count < 2
 
-    if status == nfc_reader.MI_OK:
-        uid = '-'.join(map(str, uid))
+    def new_users_loop(self, infinite=True):
+        keep_going = True
+        while keep_going:
+            keep_going = infinite
 
-        logging.debug("UID: {}".format(uid))
+            tag_uid = self.read_uid()
+            if tag_uid:
+                print "=" * 50
+                user_name = raw_input("NFC UID captured. Enter your username: ")
+                poolbot.add_user(user_name, tag_uid)
+                continue
 
-        if loop_mode == config.USER_ADD_MODE:
-            print "=" * 50
-            username = raw_input("NFC UID captured. Enter your username: ")
-            poolbot.add_user(username, uid)
-            continue
+            if not infinite:
+                break
 
-        if uid not in players and players_count < 2:
+    def game_loop(self, infinite=True):
+
+        keep_going = True
+        while keep_going:
+            keep_going = infinite
+            tag_uid = self.read_uid()
+
             try:
-                user_data = poolbot.get_user(uid)
-            except IndexError:
+                user_data = poolbot.get_user(tag_uid)
+            except IndexError:  # raised when tag_uid is None or user doesn't exist
                 logging.debug("NFC tag not tied with any user.")
                 continue
 
-            user_data = poolbot.get_user(uid)
-            players[uid] = user_data
+            if self.players_count < 2 and tag_uid not in self.players:
+                self.players[tag_uid] = user_data
+                logging.debug("{} registered.".format(user_data['username']))
+                beep()
 
-            players_count = len(players)
-            locals()['player_{}_reg_time'.format(players_count)] = dt.now()
-            logging.debug("{} registered.".format(user_data['username']))
-            beep()
+            if self.game_on and tag_uid in self.players:  # winner known
+                winner_data = self.players.pop(tag_uid)
+                loser_data = self.players.values()[0]
 
-        if uid in players and game_timer:  # Only current players are allowed to end the game
-            winner_data = players.pop(uid)
-            loser_data = players.values()[0]
+                logging.debug("{} has won a match against {}.".format(
+                    winner_data['username'],
+                    loser_data['username'],
+                ))
+                logging.debug("Game took {}".format(str(timedelta(seconds=self.time_elapsed))))
 
-            logging.debug("{} has won a match against {}.".format(winner_data['username'], loser_data['username']))
-            logging.debug("Game took {} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60))
+                poolbot.send_result_to_slack(
+                    winner_data['slack_id'],
+                    loser_data['slack_id'],
+                    str(timedelta(seconds=self.time_elapsed)),
+                )
 
-            poolbot.send_result_to_slack(
-                winner_data['slack_id'],
-                loser_data['slack_id'],
-                "{} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60),
-            )
+                beep(beeps=2, length=2)
+                self.reset()
+                logging.debug("====== GAME OVER ======")
 
-            beep(beeps=2, length=2)
-            reset_game(sound=False)
-            logging.debug("====== GAME OVER ======")
-            logging.debug("")
-            sleep(5)
+            if self.should_reset():
+                self.reset()
 
-    if player_1_reg_time and players_count < 2 and (dt.now() - player_1_reg_time).seconds > 15:
-        logging.debug("Resetting the game. Register both players faster (within 15 seconds).")
-        reset_game()
+            if self.game_can_start():
+                self.timer = dt.now()
+                poolbot.send_game_start_to_slack(
+                    *[usr['slack_id'] for usr in self.players.values()]
+                )
+                beep(length=3)
 
-    # Never go past this point if players haven't registered
-    if players_count < 2:
-        continue
 
-    if game_timer is None:
-        logging.debug("Players registered. Game begins!")
-        beep(length=3)
-        game_timer = dt.now()
-        poolbot.send_game_start_to_slack(
-            *[p['slack_id'] for p in players.values()]
-        )
-
-    time_elapsed = (dt.now() - game_timer).seconds
-
+if __name__ == "__main__":
+    game = Game()
+    if 'add_user' in sys.argv:
+        game.new_users_loop()
+    else:
+        game.game_loop()

@@ -1,28 +1,24 @@
 # -*- coding: utf8 -*-
 import json
-import os
 import shelve
 
 import requests
 import slackclient
 
-
-from config import (
-    SERVER_TOKEN,
-    URL_MATCH,
-    URL_PLAYER,
-    POOL_CHANNEL_ID,
-    ROOT_PATH,
-    NFC_BOT_TOKEN,
-)
+import config
 
 
 def _create_session():
     s = requests.Session()
     s.headers.update({
-        'Authorization': 'Token {token}'.format(token=SERVER_TOKEN)
+        'Authorization': 'Token {token}'.format(token=config.SERVER_TOKEN)
     })
     return s
+
+
+def _get_poolbot_users():
+    s = _create_session()
+    return json.loads(s.get(config.URL_PLAYER).content)
 
 
 def send_result_to_server(
@@ -34,19 +30,19 @@ def send_result_to_server(
     s = _create_session()
 
     res = s.post(
-        URL_MATCH,
+        config.URL_MATCH,
         data={
             'winner': winner_slack_id,
             'loser': loser_slack_id,
             'granny': granny,
-            'channel': POOL_CHANNEL_ID,
+            'channel': config.POOL_CHANNEL_ID,
         }
     )
     return res.status_code == requests.codes.created
 
 
 def _send_message_to_slack(msg):
-    sc = slackclient.SlackClient(token=NFC_BOT_TOKEN)
+    sc = slackclient.SlackClient(token=config.NFC_BOT_TOKEN)
     sc.api_call(
         'chat.postMessage',
         channel='#pool',
@@ -62,7 +58,7 @@ def send_result_to_slack(
     game_time,
     granny=False,
 ):
-    msg = "<@{}> beat <@{}>. The game took {}".format(
+    msg = ":nfc: <@{}> beat <@{}>. The game took {}".format(
         winner_slack_id,
         loser_slack_id,
         game_time,
@@ -87,10 +83,9 @@ def add_user(username, nfc_uid):
     You can add more than one tag UID per user.
     """
     try:
-        s = _create_session()
-        data = json.loads(s.get(URL_PLAYER).content)
+        data = _get_poolbot_users()
     except ValueError:
-        print "Could not retrieve users from the poolbot server.")
+        print "Could not retrieve users from the poolbot server."
         return
 
     found = filter(lambda x: x['name'] == username, data)
@@ -99,7 +94,7 @@ def add_user(username, nfc_uid):
         return
 
     user = found[0]
-    db = shelve.open(os.path.join(ROOT_PATH, 'users.db'), writeback=True)
+    db = shelve.open(config.DB_FILE_PATH, writeback=True)
     if username in db:
         # Check this UID isn't registered with another user.
         # Abort with a message if so.
@@ -128,6 +123,6 @@ def get_user(nfc_uid):
     Finds and return username/user data pairs from the local db.
     Raises IndexError if user not in the db.
     """
-    db = shelve.open(os.path.join(ROOT_PATH, 'users.db'))
+    db = shelve.open(config.DB_FILE_PATH)
     return filter(lambda x: nfc_uid in x['uids'], db.values()).pop()
 
