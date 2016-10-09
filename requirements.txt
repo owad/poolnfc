@@ -1,1 +1,15 @@
+freezegun==0.3.7
+funcsigs==1.0.2
+linecache2==1.0.0
+mock==2.0.0
+pbr==1.10.0
+py==1.4.31
+pytest==3.0.3
+python-dateutil==2.5.3
 requests==2.11.1
+RPi.GPIO==1.0.0
+six==1.10.0
+slackclient==1.0.2
+traceback2==1.4.0
+unittest2==1.1.0
+websocket-client==0.37.0
