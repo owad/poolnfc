@@ -1,6 +1,7 @@
+live_config.py
+games.log
 .idea/
 *.pyc
-games.log
 .cache
 *.swp
 
