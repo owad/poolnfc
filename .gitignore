@@ -1,5 +1,6 @@
 live_config.py
 games.log
+pytestdebug.log
 .idea/
 *.pyc
 .cache
