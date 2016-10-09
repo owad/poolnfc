@@ -80,10 +80,6 @@ class Game(object):
                 print "=" * 50
                 user_name = raw_input("NFC UID captured. Enter your username: ")
                 poolbot.add_user(user_name, tag_uid)
-                continue
-
-            if not infinite:
-                break
 
     def game_loop(self, infinite=True):
 
