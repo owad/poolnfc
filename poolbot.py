@@ -58,7 +58,7 @@ def send_result_to_slack(
     game_time,
     granny=False,
 ):
-    msg = ":nfc: <@{}> beat <@{}>. The game took {}".format(
+    msg = ":nfc-red: <@{}> has won the match against <@{}>. It all took {}".format(
         winner_slack_id,
         loser_slack_id,
         game_time,
@@ -70,7 +70,7 @@ def send_game_start_to_slack(
         player_1_slack_id,
         player_2_slack_id,
 ):
-    msg = "Match between <@{}> and <@{}> started.".format(
+    msg = ":nfc-green: Match between <@{}> and <@{}> started.".format(
         player_1_slack_id,
         player_2_slack_id,
     )
