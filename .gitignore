@@ -1,5 +1,6 @@
 .idea/
 *.pyc
+live_config.py
 config.py
 games.log
 users.db
