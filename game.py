@@ -62,6 +62,7 @@ class Game(object):
         Checks if NFC tag is available (within the reader's sight)
         :return: uid (or None)
         """
+        nfc_reader.MFRC522_Request(nfc_reader.PICC_REQIDL)
         reader_status, reader_uid = nfc_reader.MFRC522_Anticoll()
         if reader_status == nfc_reader.MI_OK:
             return '-'.join(map(str, reader_uid))
@@ -99,7 +100,8 @@ class Game(object):
             try:
                 user_data = poolbot.get_user(tag_uid)
             except IndexError:  # raised when tag_uid is None or user doesn't exist
-                logging.debug("NFC tag not recognised or tied with any user.")
+                if tag_uid:
+                    logging.debug("NFC tag not recognised or tied with any user.")
                 continue
 
             if self.players_count < 2 and tag_uid not in self.players:
