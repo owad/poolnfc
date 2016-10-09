@@ -9,7 +9,6 @@ import sys
 from beeper import beep
 import MFRC522
 import poolbot
-import config
 
 
 # Capture SIGINT for cleanup when the script is aborted
@@ -69,7 +68,7 @@ class Game(object):
             return False
 
         seconds_since_reg_started = (dt.now() - self.registration_start_time).seconds
-        return seconds_since_reg_started > config.REGISTRATION_WINDOW and self.players_count < 2
+        return seconds_since_reg_started > poolbot.config.REGISTRATION_WINDOW and self.players_count < 2
 
     def new_users_loop(self, infinite=True):
         keep_going = True

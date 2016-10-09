@@ -5,7 +5,7 @@ import shelve
 import requests
 import slackclient
 
-import config
+import live_config as config
 
 
 def _create_session():

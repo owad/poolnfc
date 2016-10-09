@@ -33,7 +33,6 @@ class TestGame(unittest.TestCase):
 
     def tearDown(self):
         os.remove(test_config.DB_FILE_PATH)
-        self.game = game_module.Game()
 
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
@@ -56,7 +55,7 @@ class TestGame(unittest.TestCase):
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
     @mock.patch.object(game_module.Game, 'read_uid')
-    @mock.patch('poolnfc.nfc.beep')
+    @mock.patch('poolnfc.game.beep')
     def test_game_should_reset_if_only_one_user_registered_for_15s(
             self,
             mock_beep,
@@ -82,7 +81,7 @@ class TestGame(unittest.TestCase):
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
     @mock.patch.object(game_module.Game, 'read_uid')
-    @mock.patch('poolnfc.nfc.beep')
+    @mock.patch('poolnfc.game.beep')
     def test_register_first_user_then_the_second_one(
             self,
             mock_beep,
@@ -107,7 +106,7 @@ class TestGame(unittest.TestCase):
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
     @mock.patch.object(game_module.Game, 'read_uid')
-    @mock.patch('poolnfc.nfc.beep')
+    @mock.patch('poolnfc.game.beep')
     def test_register_third_user_while_a_game_is_on(
             self,
             mock_beep,
@@ -141,7 +140,7 @@ class TestGame(unittest.TestCase):
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
     @mock.patch.object(game_module.Game, 'read_uid')
-    @mock.patch('poolnfc.nfc.beep')
+    @mock.patch('poolnfc.game.beep')
     def test_end_game(
             self,
             mock_beep,
@@ -168,7 +167,7 @@ class TestGame(unittest.TestCase):
 
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._get_poolbot_users')
-    @mock.patch('poolnfc.nfc.raw_input')
+    @mock.patch('poolnfc.game.raw_input')
     @mock.patch.object(game_module.Game, 'read_uid')
     def test_adding_uid_for_a_new_user(
             self,
@@ -187,7 +186,7 @@ class TestGame(unittest.TestCase):
 
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._get_poolbot_users')
-    @mock.patch('poolnfc.nfc.raw_input')
+    @mock.patch('poolnfc.game.raw_input')
     @mock.patch.object(game_module.Game, 'read_uid')
     def test_adding_uid_for_an_existing_user(
         self,
@@ -203,7 +202,7 @@ class TestGame(unittest.TestCase):
         self.assertEqual(len(db['lukasz']['uids']), 1)
         db.close()
 
-        game.new_users_loop(infinite=False)
+        self.game.new_users_loop(infinite=False)
 
         db = shelve.open(test_config.DB_FILE_PATH)
         self.assertEqual(len(db['lukasz']['uids']), 2)
@@ -211,7 +210,7 @@ class TestGame(unittest.TestCase):
 
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._get_poolbot_users')
-    @mock.patch('poolnfc.nfc.raw_input')
+    @mock.patch('poolnfc.game.raw_input')
     @mock.patch.object(game_module.Game, 'read_uid')
     def test_adding_uid_that_is_already_tied_to_another_user(
         self,
@@ -235,7 +234,7 @@ class TestGame(unittest.TestCase):
 
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._get_poolbot_users')
-    @mock.patch('poolnfc.nfc.raw_input')
+    @mock.patch('poolnfc.game.raw_input')
     @mock.patch.object(game_module.Game, 'read_uid')
     def test_adding_uid_that_is_already_tied_to_the_user(
         self,
