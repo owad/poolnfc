@@ -1,0 +1,1 @@
+[{"slack_id": "U0001J", "name": "javiman"}, {"slack_id": "U0002M", "name": "matus"}, {"slack_id": "U0003P", "name": "phil"}, {"slack_id": "U0004L", "name": "lukasz"}]

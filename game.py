@@ -9,6 +9,7 @@ import sys
 from beeper import beep
 import MFRC522
 import poolbot
+import config
 
 
 # Capture SIGINT for cleanup when the script is aborted
@@ -26,7 +27,8 @@ class Game(object):
 
     def __init__(self):
         self.players = dict()
-        self.timer = None
+        self.start_time = None
+        self.registration_start_time = None
         self.nfc_reader = MFRC522.MFRC522()
 
     @property
@@ -35,21 +37,22 @@ class Game(object):
 
     @property
     def time_elapsed(self):
-        if self.timer is None:
+        if self.start_time is None:
             return 0
-        return (dt.now() - self.timer).seconds
+        return (dt.now() - self.start_time).seconds
 
     @property
     def game_on(self):
-        return bool(self.timer)
+        return bool(self.start_time)
 
     def game_can_start(self):
         return self.players_count == 2
 
     def reset(self):
         logging.debug("Resetting the game. Register both players faster (within 15 seconds).")
-        self.players = dict()
-        self.timer = None
+        self.players = {}
+        self.start_time = None
+        self.registration_start_time = None
 
     def read_uid(self):
         """
@@ -62,7 +65,11 @@ class Game(object):
         return None
 
     def should_reset(self):
-        return self.time_elapsed > 15 and self.players_count < 2
+        if not self.registration_start_time:
+            return False
+
+        seconds_since_reg_started = (dt.now() - self.registration_start_time).seconds
+        return seconds_since_reg_started > config.REGISTRATION_WINDOW and self.players_count < 2
 
     def new_users_loop(self, infinite=True):
         keep_going = True
@@ -86,13 +93,18 @@ class Game(object):
             keep_going = infinite
             tag_uid = self.read_uid()
 
+            if self.should_reset():
+                self.reset()
+                beep(beeps=6, length=0.25)
+
             try:
                 user_data = poolbot.get_user(tag_uid)
             except IndexError:  # raised when tag_uid is None or user doesn't exist
-                logging.debug("NFC tag not tied with any user.")
+                logging.debug("NFC tag not recognised or tied with any user.")
                 continue
 
             if self.players_count < 2 and tag_uid not in self.players:
+                self.registration_start_time = dt.now()
                 self.players[tag_uid] = user_data
                 logging.debug("{} registered.".format(user_data['username']))
                 beep()
@@ -117,11 +129,8 @@ class Game(object):
                 self.reset()
                 logging.debug("====== GAME OVER ======")
 
-            if self.should_reset():
-                self.reset()
-
             if self.game_can_start():
-                self.timer = dt.now()
+                self.start_time = dt.now()
                 poolbot.send_game_start_to_slack(
                     *[usr['slack_id'] for usr in self.players.values()]
                 )

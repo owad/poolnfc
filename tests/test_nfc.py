@@ -1,3 +1,5 @@
+from datetime import timedelta
+from freezegun import freeze_time
 import json
 import mock
 import os
@@ -17,7 +19,7 @@ JAVIMAN_UID = '222-222-222-222'
 PHIL_UID = '333-333-333-333'
 
 
-class TestNFC(unittest.TestCase):
+class TestGame(unittest.TestCase):
 
     @mock.patch('poolnfc.poolbot._get_poolbot_users')
     @mock.patch('poolnfc.poolbot.config', test_config)
@@ -47,6 +49,33 @@ class TestNFC(unittest.TestCase):
         game.game_loop(infinite=False)
 
         self.assertEqual(game.players_count, 1)
+        self.assertFalse(game.game_can_start())
+        self.assertEqual(mock_msg_to_slack.call_count, 0)
+
+    @mock.patch('poolnfc.poolbot.config', test_config)
+    @mock.patch('poolnfc.poolbot._send_message_to_slack')
+    @mock.patch.object(nfc.Game, 'read_uid')
+    @mock.patch('poolnfc.nfc.beep')
+    def test_game_should_reset_if_only_one_user_registered_for_15s(
+            self,
+            mock_beep,
+            mock_get_uid,
+            mock_msg_to_slack,
+    ):
+        game = nfc.Game()
+        self.assertFalse(game.registration_start_time)
+
+        mock_get_uid.return_value = LUKASZ_UID
+        game.game_loop(infinite=False)
+
+        mock_get_uid.return_value = None
+        game.game_loop(infinite=False)
+
+        with freeze_time(game.registration_start_time + timedelta(seconds=test_config.REGISTRATION_WINDOW + 1)):
+            mock_get_uid.return_value = None
+            game.game_loop(infinite=False)
+
+        self.assertEqual(game.players_count, 0)
         self.assertFalse(game.game_can_start())
         self.assertEqual(mock_msg_to_slack.call_count, 0)
 
