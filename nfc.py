@@ -3,7 +3,7 @@
 import logging
 import signal
 import sys
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
 from time import sleep
 
 import RPi.GPIO as GPIO
@@ -97,12 +97,12 @@ while continue_reading:
             loser_data = players.values()[0]
 
             logging.debug("{} has won a match against {}.".format(winner_data['username'], loser_data['username']))
-            logging.debug("Game took {} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60))
+            logging.debug("Game took {}".format(str(timedelta(seconds=time_elapsed))))
 
             poolbot.send_result_to_slack(
                 winner_data['slack_id'],
                 loser_data['slack_id'],
-                "{} minute(s) and {} second(s)".format(time_elapsed / 60, time_elapsed % 60),
+                timedelta(seconds=time_elapsed),
             )
 
             beep(beeps=2, length=2)

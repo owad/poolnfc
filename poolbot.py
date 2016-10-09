@@ -63,7 +63,7 @@ def send_result_to_slack(
     game_time,
     granny=False,
 ):
-    msg = "<@{}> beat <@{}>. The game took {}".format(
+    msg = ":nfc: <@{}> beat <@{}>. The game took {}".format(
         winner_slack_id,
         loser_slack_id,
         game_time,
@@ -91,27 +91,26 @@ def add_user(username, nfc_uid):
         s = _create_session()
         data = json.loads(s.get(URL_PLAYER).content)
     except Exception, e:
-        logging.exception("Could not retrieve users from the poolbot server.")
-        logging.exception(e)
+        print "Could not retrieve users from the poolbot server."
         return
 
     found = filter(lambda x: x['name'] == username, data)
     if not found:
-        logging.error("Username '{}' not found on the poolbot server.".format(username))
+        print "Username '{}' not found on the poolbot server.".format(username)
         return
 
     user = found[0]
     db = shelve.open(os.path.join(ROOT_PATH, 'users.db'), writeback=True)
-    if username in db:
-        # Check this UID isn't registered with another user.
-        # Abort with a message if so.
-        all_other_users = {usr[0]: usr[1] for usr in db.items() if usr[0] != username}
-        found = filter(lambda a: nfc_uid in a[1]['uids'], all_other_users.items())
-        if found:
-            logging.warning(nfc_uid)
-            logging.warning("This NFC tag has been already assigned to {}.".format(found[0][0]))
-            return
 
+    # Check this UID isn't already registered with a user.
+    # Abort with a message if so.
+    found = filter(lambda a: nfc_uid in a[1]['uids'], db.items())
+    if found:
+        print nfc_uid
+        print "This NFC tag has been already assigned to {}.".format(found[0][0])
+        return
+
+    if username in db:
         db[username]['uids'].add(nfc_uid)
         db[username]['username'] = user['name']  # set it again just in case username has been changed
     else:
@@ -122,7 +121,7 @@ def add_user(username, nfc_uid):
         }
 
     db.close()
-    logging.debug("This NFC tag has been assigned to {}".format(username))
+    print "This NFC tag has been assigned to {}".format(username)
 
 
 def get_user(nfc_uid):
