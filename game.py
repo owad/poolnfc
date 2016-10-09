@@ -2,20 +2,25 @@
 # -*- coding: utf8 -*-
 from datetime import datetime as dt, timedelta
 import logging
-import RPi.GPIO as GPIO
+import RPi.GPIO as gpio
 import signal
 import sys
 
-from beeper import beep
 import MFRC522
+nfc_reader = MFRC522.MFRC522()
+
+from beeper import beep
 import poolbot
+
+
+continue_reading = True
 
 
 # Capture SIGINT for cleanup when the script is aborted
 def end_read(signal, frame):
     global continue_reading
     continue_reading = False
-    GPIO.cleanup()
+    gpio.cleanup()
 
 
 # Hook the SIGINT
@@ -28,7 +33,6 @@ class Game(object):
         self.players = dict()
         self.start_time = None
         self.registration_start_time = None
-        self.nfc_reader = MFRC522.MFRC522()
 
     @property
     def players_count(self):
@@ -58,8 +62,8 @@ class Game(object):
         Checks if NFC tag is available (within the reader's sight)
         :return: uid (or None)
         """
-        reader_status, reader_uid = self.nfc_reader.MFRC522_Anticoll()
-        if reader_status == self.nfc_reader.MI_OK:
+        reader_status, reader_uid = nfc_reader.MFRC522_Anticoll()
+        if reader_status == nfc_reader.MI_OK:
             return '-'.join(map(str, reader_uid))
         return None
 
@@ -73,7 +77,7 @@ class Game(object):
     def new_users_loop(self, infinite=True):
         keep_going = True
         while keep_going:
-            keep_going = infinite
+            keep_going = infinite and continue_reading
 
             tag_uid = self.read_uid()
             if tag_uid:
@@ -85,7 +89,7 @@ class Game(object):
 
         keep_going = True
         while keep_going:
-            keep_going = infinite
+            keep_going = infinite and continue_reading
             tag_uid = self.read_uid()
 
             if self.should_reset():
@@ -135,6 +139,8 @@ class Game(object):
 if __name__ == "__main__":
     game = Game()
     if 'add_user' in sys.argv:
+        beep(beeps=1)
         game.new_users_loop()
     else:
+        beep(beeps=2)
         game.game_loop()

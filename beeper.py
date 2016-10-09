@@ -2,7 +2,6 @@
 import RPi.GPIO as gpio
 from time import sleep
 
-gpio.setmode(gpio.BOARD)
 gpio.setup(8, gpio.OUT)
 gpio.output(8, gpio.LOW)
 
