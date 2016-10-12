@@ -8,6 +8,9 @@ import slackclient
 import live_config as config
 
 
+users = None
+
+
 def _create_session():
     s = requests.Session()
     s.headers.update({
@@ -17,8 +20,14 @@ def _create_session():
 
 
 def _get_poolbot_users():
+    global users
+    if users is not None:
+        return users
+
+    print "Requesting list of users..."
     s = _create_session()
-    return json.loads(s.get(config.URL_PLAYER).content)
+    users = json.loads(s.get(config.URL_PLAYER).content)
+    return users
 
 
 def send_result_to_server(
@@ -45,9 +54,8 @@ def _send_message_to_slack(msg):
     sc = slackclient.SlackClient(token=config.NFC_BOT_TOKEN)
     sc.api_call(
         'chat.postMessage',
-        channel='#pool',
+        channel=config.POOL_CHANNEL_ID,
         text=msg,
-        username='zebra',
         as_user=True,
     )
 
@@ -77,18 +85,19 @@ def send_game_start_to_slack(
     _send_message_to_slack(msg)
 
 
+
 def add_user(username, nfc_uid):
     """
     Tie NFC tag's UID(s) with a slack/potato user.
     You can add more than one tag UID per user.
     """
     try:
-        data = _get_poolbot_users()
+        users = _get_poolbot_users()
     except ValueError:
         print "Could not retrieve users from the poolbot server."
         return
 
-    found = filter(lambda x: x['name'] == username, data)
+    found = filter(lambda x: x['name'] == username, users)
     if not found:
         print "Username '{}' not found on the poolbot server.".format(username)
         return

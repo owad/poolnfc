@@ -1,5 +1,6 @@
-live_config.py
 games.log
+live_config.py
+live_config.py_*
 pytestdebug.log
 users.db
 .idea/
