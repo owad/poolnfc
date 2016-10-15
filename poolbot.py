@@ -85,7 +85,6 @@ def send_game_start_to_slack(
     _send_message_to_slack(msg)
 
 
-
 def add_user(username, nfc_uid):
     """
     Tie NFC tag's UID(s) with a slack/potato user.

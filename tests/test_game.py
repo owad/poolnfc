@@ -9,6 +9,7 @@ import unittest
 
 sys.modules['spi'] = mock.MagicMock()
 sys.modules['MFRC522'] = mock.MagicMock()
+sys.modules['gpiozero'] = mock.MagicMock()
 
 from .. import game as game_module
 from .. import poolbot
@@ -28,11 +29,11 @@ class TestGame(unittest.TestCase):
         mock_users.return_value = json.loads(open('tests/poolbot_users_api.txt').read())
         poolbot.add_user('lukasz', LUKASZ_UID)
         poolbot.add_user('javiman', JAVIMAN_UID)
-
         self.game = game_module.Game()
 
     def tearDown(self):
         os.remove(test_config.DB_FILE_PATH)
+        self.game = None
 
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
@@ -43,10 +44,10 @@ class TestGame(unittest.TestCase):
             mock_msg_to_slack,
     ):
         mock_get_uid.return_value = LUKASZ_UID
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         mock_get_uid.return_value = None
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         self.assertEqual(self.game.players_count, 1)
         self.assertFalse(self.game.game_can_start())
@@ -55,24 +56,24 @@ class TestGame(unittest.TestCase):
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
     @mock.patch.object(game_module.Game, 'read_uid')
-    @mock.patch('poolnfc.game.beep')
     def test_game_should_reset_if_only_one_user_registered_for_15s(
             self,
-            mock_beep,
             mock_get_uid,
             mock_msg_to_slack,
     ):
         self.assertFalse(self.game.registration_start_time)
 
         mock_get_uid.return_value = LUKASZ_UID
-        self.game.game_loop(infinite=False)
+
+        self.game.new_user_button.is_pressed = False
+        self.game.main_loop(infinite=False)
 
         mock_get_uid.return_value = None
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         with freeze_time(self.game.registration_start_time + timedelta(seconds=test_config.REGISTRATION_WINDOW + 1)):
             mock_get_uid.return_value = None
-            self.game.game_loop(infinite=False)
+            self.game.main_loop(infinite=False)
 
         self.assertEqual(self.game.players_count, 0)
         self.assertFalse(self.game.game_can_start())
@@ -81,88 +82,89 @@ class TestGame(unittest.TestCase):
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
     @mock.patch.object(game_module.Game, 'read_uid')
-    @mock.patch('poolnfc.game.beep')
+    # @mock.patch('poolnfc.game.beep')
     def test_register_first_user_then_the_second_one(
             self,
-            mock_beep,
+            # mock_beep,
             mock_get_uid,
             mock_msg_to_slack,
     ):
         mock_get_uid.return_value = LUKASZ_UID
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         mock_get_uid.return_value = JAVIMAN_UID
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         mock_get_uid.return_value = None
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         self.assertEqual(self.game.players_count, 2)
         self.assertTrue(self.game.game_can_start())
         self.assertTrue(self.game.game_on)
-        self.assertEqual(mock_beep.call_count, 3)
+        # self.assertEqual(mock_beep.call_count, 3)
         self.assertEqual(mock_msg_to_slack.call_count, 1)
 
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
     @mock.patch.object(game_module.Game, 'read_uid')
-    @mock.patch('poolnfc.game.beep')
+    # @mock.patch('poolnfc.game.beep')
     def test_register_third_user_while_a_game_is_on(
             self,
-            mock_beep,
+            # mock_beep,
             mock_get_uid,
             mock_msg_to_slack,
     ):
         self.assertEqual(self.game.players_count, 0)
 
         mock_get_uid.return_value = LUKASZ_UID
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
         self.assertEqual(self.game.players_count, 1)
 
         mock_get_uid.return_value = JAVIMAN_UID
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
         self.assertEqual(self.game.players_count, 2)
 
         mock_get_uid.return_value = PHIL_UID
         self.assertEqual(self.game.players_count, 2)
 
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
         mock_get_uid.return_value = None
 
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         self.assertEqual(self.game.players_count, 2)
         self.assertTrue(self.game.game_can_start())
         self.assertTrue(self.game.game_on)
-        self.assertEqual(mock_beep.call_count, 3)
+        # self.assertEqual(mock_beep.call_count, 3)
         self.assertEqual(mock_msg_to_slack.call_count, 1)
 
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
     @mock.patch.object(game_module.Game, 'read_uid')
-    @mock.patch('poolnfc.game.beep')
+    # @mock.patch('poolnfc.game.beep')
     def test_end_game(
             self,
-            mock_beep,
+            # mock_beep,
             mock_get_uid,
             mock_msg_to_slack,
     ):
         mock_get_uid.return_value = LUKASZ_UID
-        self.game.game_loop(infinite=False)
+        self.game.new_user_button.is_pressed = False
+        self.game.main_loop(infinite=False)
 
         mock_get_uid.return_value = JAVIMAN_UID
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         mock_get_uid.return_value = None
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         mock_get_uid.return_value = JAVIMAN_UID
-        self.game.game_loop(infinite=False)
+        self.game.main_loop(infinite=False)
 
         self.assertEqual(self.game.players_count, 0)
         self.assertFalse(self.game.game_can_start())
         self.assertFalse(self.game.game_on)
-        self.assertEqual(mock_beep.call_count, 4)
+        # self.assertEqual(mock_beep.call_count, 4)
         self.assertEqual(mock_msg_to_slack.call_count, 2)
 
     @mock.patch('poolnfc.poolbot.config', test_config)
@@ -179,7 +181,7 @@ class TestGame(unittest.TestCase):
         mock_raw_input.return_value = 'matus'
         mock_users.return_value = json.loads(open('tests/poolbot_users_api.txt').read())
 
-        self.game.new_users_loop(infinite=False)
+        self.game.new_user_loop()
 
         db = shelve.open(test_config.DB_FILE_PATH)
         self.assertEqual(len(db), 3)
@@ -202,7 +204,7 @@ class TestGame(unittest.TestCase):
         self.assertEqual(len(db['lukasz']['uids']), 1)
         db.close()
 
-        self.game.new_users_loop(infinite=False)
+        self.game.new_user_loop()
 
         db = shelve.open(test_config.DB_FILE_PATH)
         self.assertEqual(len(db['lukasz']['uids']), 2)
@@ -226,7 +228,7 @@ class TestGame(unittest.TestCase):
         self.assertEqual(len(db['lukasz']['uids']), 1)
         db.close()
 
-        self.game.new_users_loop(infinite=False)
+        self.game.new_user_loop()
 
         db = shelve.open(test_config.DB_FILE_PATH)
         self.assertEqual(len(db['lukasz']['uids']), 1)
@@ -250,7 +252,7 @@ class TestGame(unittest.TestCase):
         self.assertEqual(len(db['lukasz']['uids']), 1)
         db.close()
 
-        self.game.new_users_loop(infinite=False)
+        self.game.new_user_loop()
 
         db = shelve.open(test_config.DB_FILE_PATH)
         self.assertEqual(len(db['lukasz']['uids']), 1)

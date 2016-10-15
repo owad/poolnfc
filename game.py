@@ -100,9 +100,13 @@ class Game(object):
                     user_added = poolbot.add_user(user_name, tag_uid)
                     if user_added:
                         print "User added successfully."
+                        break
 
                     if user_name == '':
                         break
+
+            if user_added:
+                break
 
         print "Switching back to the GAME LOOP"
         self.led.off()
