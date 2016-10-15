@@ -2,14 +2,13 @@
 # -*- coding: utf8 -*-
 from datetime import datetime as dt, timedelta
 import logging
-import RPi.GPIO as gpio
+from RPi import GPIO
 import signal
-import sys
 
+import gpiozero
 import MFRC522
 nfc_reader = MFRC522.MFRC522()
 
-from beeper import beep
 import poolbot
 
 
@@ -20,7 +19,7 @@ continue_reading = True
 def end_read(signal, frame):
     global continue_reading
     continue_reading = False
-    gpio.cleanup()
+    GPIO.cleanup()
 
 
 # Hook the SIGINT
@@ -33,6 +32,8 @@ class Game(object):
         self.players = dict()
         self.start_time = None
         self.registration_start_time = None
+        self.led = gpiozero.LED(14)
+        self.new_user_button = gpiozero.Button(21)
 
     @property
     def players_count(self):
@@ -75,27 +76,50 @@ class Game(object):
         seconds_since_reg_started = (dt.now() - self.registration_start_time).seconds
         return seconds_since_reg_started > poolbot.config.REGISTRATION_WINDOW and self.players_count < 2
 
-    def new_users_loop(self, infinite=True):
-        keep_going = True
-        while keep_going:
-            keep_going = infinite and continue_reading
+    def new_user_loop(self):
+        start = dt.now()
+        user_added = False
+        loop_time = 0
+
+        self.led.blink(0.25, 0.25)
+        print "Switching to the NEW USER LOOP"
+        print "Touch the reader with your NFC tag."
+
+        while loop_time < 5:
+            loop_time = (dt.now() - start).total_seconds()
+            if round(loop_time % .25, 10) == 0:
+                self.led.toggle()
 
             tag_uid = self.read_uid()
             if tag_uid:
-                print "=" * 50
-                user_name = raw_input("NFC UID captured. Enter your username: ")
-                poolbot.add_user(user_name, tag_uid)
+                print "NFC UID captured."
+                while not user_added:
 
-    def game_loop(self, infinite=True):
+                    print "=" * 50
+                    user_name = raw_input("Enter your username: ")
+                    user_added = poolbot.add_user(user_name, tag_uid)
+                    if user_added:
+                        print "User added successfully."
+
+                    if user_name == '':
+                        break
+
+        print "Switching back to the GAME LOOP"
+        self.led.off()
+
+    def main_loop(self, infinite=True):
 
         keep_going = True
         while keep_going:
+            if self.new_user_button.is_pressed:
+                self.new_user_loop()
+
             keep_going = infinite and continue_reading
             tag_uid = self.read_uid()
 
             if self.should_reset():
                 self.reset()
-                beep(beeps=6, length=0.25)
+                # beep(beeps=6, length=0.25)
 
             try:
                 user_data = poolbot.get_user(tag_uid)
@@ -108,7 +132,7 @@ class Game(object):
                 self.registration_start_time = dt.now()
                 self.players[tag_uid] = user_data
                 logging.debug("{} registered.".format(user_data['username']))
-                beep()
+                # beep()
 
             if self.game_on and tag_uid in self.players:  # winner known
                 winner_data = self.players.pop(tag_uid)
@@ -126,7 +150,7 @@ class Game(object):
                     str(timedelta(seconds=self.time_elapsed)),
                 )
 
-                beep(beeps=2, length=2)
+                # beep(beeps=2, length=2)
                 self.reset()
                 logging.debug("====== GAME OVER ======")
 
@@ -135,14 +159,10 @@ class Game(object):
                 poolbot.send_game_start_to_slack(
                     *[usr['slack_id'] for usr in self.players.values()]
                 )
-                beep(length=3)
+                # beep(length=3)
 
 
 if __name__ == "__main__":
     game = Game()
-    if 'add_user' in sys.argv:
-        beep(beeps=1)
-        game.new_users_loop()
-    else:
-        beep(beeps=2)
-        game.game_loop()
+    game.led.blink(0.25, 0.25, n=3)
+    game.main_loop()
