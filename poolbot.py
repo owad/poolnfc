@@ -95,12 +95,12 @@ def add_user(username, nfc_uid):
         users = _get_poolbot_users()
     except ValueError:
         print "Could not retrieve users from the poolbot server."
-        return
+        return False
 
     found = filter(lambda x: x['name'] == username, users)
     if not found:
         print "Username '{}' not found on the poolbot server.".format(username)
-        return
+        return False
 
     user = found[0]
     db = shelve.open(config.DB_FILE_PATH, writeback=True)
@@ -112,7 +112,7 @@ def add_user(username, nfc_uid):
         if found:
             print nfc_uid
             print "This NFC tag has been already assigned to {}.".format(found[0][0])
-            return
+            return True
 
         db[username]['uids'].add(nfc_uid)
         db[username]['username'] = user['name']  # set it again just in case username has been changed
@@ -125,6 +125,7 @@ def add_user(username, nfc_uid):
 
     db.close()
     print "This NFC tag has been assigned to {}".format(username)
+    return True
 
 
 def get_user(nfc_uid):
