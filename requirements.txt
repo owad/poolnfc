@@ -15,3 +15,4 @@ traceback2==1.4.0
 unittest2==1.1.0
 websocket-client==0.37.0
 shelve2
+git+https://github.com/willbuckner/rpi-gpio-development-mock.git
