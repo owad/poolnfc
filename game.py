@@ -57,8 +57,20 @@ class Game(object):
     def game_on(self):
         return bool(self.start_time)
 
+    @property
     def game_can_start(self):
         return self.players_count == 2
+
+    def uid_belongs_to_current_player(self, tag_uid):
+        uid_sets = map(
+            lambda p: p['uids'],
+            self.players.values(),
+        )
+        players_uids = reduce(
+            lambda x, y: x | y,
+            uid_sets,
+        )
+        return tag_uid in players_uids
 
     def reset(self):
         logging.debug("Resetting the game. Register both players faster (within 15 seconds).")
@@ -168,7 +180,7 @@ class Game(object):
                 self.reset()
                 logging.debug("====== GAME OVER ======")
 
-            if self.game_can_start():
+            if self.game_can_start and self.uid_belongs_to_current_player(tag_uid):
                 self.buzzer.beep(on_time=2, off_time=0.2, n=1)
                 self.start_time = dt.now()
                 poolbot.send_game_start_to_slack(
