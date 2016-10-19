@@ -107,13 +107,16 @@ class TestGame(unittest.TestCase):
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
     @mock.patch.object(game_module.Game, 'read_uid')
+    @mock.patch('poolnfc.poolbot._get_poolbot_users')
     # @mock.patch('poolnfc.game.beep')
     def test_register_third_user_while_a_game_is_on(
             self,
             # mock_beep,
+            mock_users,
             mock_get_uid,
             mock_msg_to_slack,
     ):
+        self.game.new_user_button.is_pressed = False
         self.assertEqual(self.game.players_count, 0)
 
         mock_get_uid.return_value = LUKASZ_UID
@@ -124,19 +127,28 @@ class TestGame(unittest.TestCase):
         self.game.main_loop(infinite=False)
         self.assertEqual(self.game.players_count, 2)
 
-        mock_get_uid.return_value = PHIL_UID
-        self.assertEqual(self.game.players_count, 2)
-
-        self.game.main_loop(infinite=False)
-        mock_get_uid.return_value = None
-
-        self.game.main_loop(infinite=False)
-
         self.assertEqual(self.game.players_count, 2)
         self.assertTrue(self.game.game_can_start())
         self.assertTrue(self.game.game_on)
-        # self.assertEqual(mock_beep.call_count, 3)
         self.assertEqual(mock_msg_to_slack.call_count, 1)
+
+        # test if a 3rd, not-assigned NFC tag can trigger "game started" message
+        mock_get_uid.return_value = PHIL_UID
+        self.assertEqual(self.game.players_count, 2)
+        self.game.main_loop(infinite=False)
+        self.assertEqual(mock_msg_to_slack.call_count, 1)
+
+        # test if a 3rd, known NFC tag can trigger "game started" message
+        mock_users.return_value = json.loads(open('tests/poolbot_users_api.txt').read())
+        poolbot.add_user('phil', PHIL_UID)
+        self.game.main_loop(infinite=False)
+        self.assertEqual(mock_msg_to_slack.call_count, 1)
+
+        mock_get_uid.return_value = None
+        self.game.main_loop(infinite=False)
+
+        self.assertEqual(self.game.players_count, 2)
+        # self.assertEqual(mock_beep.call_count, 3)
 
     @mock.patch('poolnfc.poolbot.config', test_config)
     @mock.patch('poolnfc.poolbot._send_message_to_slack')
@@ -257,3 +269,6 @@ class TestGame(unittest.TestCase):
         db = shelve.open(test_config.DB_FILE_PATH)
         self.assertEqual(len(db['lukasz']['uids']), 1)
         db.close()
+
+    def test_third_tag_should_not_trigger_the_start_message(self):
+        pass
