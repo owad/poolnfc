@@ -50,7 +50,7 @@ class TestGame(unittest.TestCase):
         self.game.main_loop(infinite=False)
 
         self.assertEqual(self.game.players_count, 1)
-        self.assertFalse(self.game.game_can_start())
+        self.assertFalse(self.game.game_can_start)
         self.assertEqual(mock_msg_to_slack.call_count, 0)
 
     @mock.patch('poolnfc.poolbot.config', test_config)
