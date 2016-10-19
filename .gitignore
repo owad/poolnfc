@@ -3,6 +3,7 @@ live_config.py
 live_config.py_*
 pytestdebug.log
 users.db
+.coverage
 .idea/
 *.pyc
 .cache

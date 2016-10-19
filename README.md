@@ -6,4 +6,4 @@ First set up a virtual env with `mkvirtualenv`, then run `pip install -r require
 
 ## Running tests
 
-`python -m pytests`
+`./run_tests.sh`

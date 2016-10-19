@@ -1,0 +1,2 @@
+[run]
+omit = tests/*,MFRC522.py,requirements.txt
