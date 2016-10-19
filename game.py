@@ -158,22 +158,22 @@ class Game(object):
                 ))
                 logging.debug("Game took {}".format(str(timedelta(seconds=self.time_elapsed))))
 
+                self.buzzer.beep(on_time=1, off_time=0.2, n=2)
                 poolbot.send_result_to_slack(
                     winner_data['slack_id'],
                     loser_data['slack_id'],
                     str(timedelta(seconds=self.time_elapsed)),
                 )
 
-                self.buzzer.beep(on_time=1, off_time=0.2, n=2)
                 self.reset()
                 logging.debug("====== GAME OVER ======")
 
             if self.game_can_start():
+                self.buzzer.beep(on_time=2, off_time=0.2, n=1)
                 self.start_time = dt.now()
                 poolbot.send_game_start_to_slack(
                     *[usr['slack_id'] for usr in self.players.values()]
                 )
-                self.buzzer.beep(on_time=2, off_time=0.2, n=1)
 
 
 if __name__ == "__main__":
