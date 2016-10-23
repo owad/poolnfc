@@ -4,6 +4,7 @@ import shelve
 
 import requests
 import slackclient
+from time import sleep
 
 import live_config as config
 
@@ -52,15 +53,34 @@ def send_result_to_server(
 
 def _send_message_to_slack(msg):
     sc = slackclient.SlackClient(token=config.NFC_BOT_TOKEN)
-    sc.api_call(
-        'chat.postMessage',
-        channel=config.POOL_CHANNEL_ID,
-        text=msg,
-        as_user=True,
-    )
+
+    for i in xrange(1, 6):
+        try:
+            res = sc.api_call(
+                'chat.postMessage',
+                channel=config.POOL_CHANNEL_ID,
+                text=msg,
+                as_user=True,
+            )
+            if res.get('ok', False):
+                print "Message sent after %d tries" % i
+                return
+
+        except Exception, e:  # catch everything
+            seconds = 2**i
+            print '=== slack request failed (%d) ===' % i
+            print "Backing off for %d seconds" % seconds
+            print e
+            print e.message
+            print '================================='
+
+            sleep(seconds)
+            continue
+
+    print "Slack request failed after 5 attempts."
 
 
-def send_result_to_slack(
+def send_game_end_message(
     winner_slack_id,
     loser_slack_id,
     game_time,
@@ -74,7 +94,7 @@ def send_result_to_slack(
     _send_message_to_slack(msg)
 
 
-def send_game_start_to_slack(
+def send_game_start_message(
         player_1_slack_id,
         player_2_slack_id,
 ):
@@ -83,6 +103,10 @@ def send_game_start_to_slack(
         player_2_slack_id,
     )
     _send_message_to_slack(msg)
+
+
+def set_game_abandoned_message():
+    _send_message_to_slack("Game has been abandoned.")
 
 
 def add_user(username, nfc_uid):

@@ -40,7 +40,7 @@ class Game(object):
         self.registration_start_time = None
         self.red_led = gpiozero.LED(RED_LED_PIN)
         self.green_led = gpiozero.LED(GREEN_LED_PIN)
-        self.new_user_button = gpiozero.Button(MODE_BUTTON_PIN)
+        self.reset_button = gpiozero.Button(MODE_BUTTON_PIN)
         self.buzzer = gpiozero.Buzzer(BUZZER_PIN)
 
     @property
@@ -137,15 +137,16 @@ class Game(object):
 
         keep_going = True
         while keep_going:
-            if self.new_user_button.is_pressed:
-                self.new_user_loop()
-
             keep_going = infinite and continue_reading
             tag_uid = self.read_uid()
 
             if self.should_reset():
                 self.reset()
                 self.buzzer.beep(on_time=0.1, off_time=0.1, n=5)
+
+            if self.reset_button.is_pressed:
+                self.reset()
+                poolbot.set_game_abandoned_message()
 
             try:
                 user_data = poolbot.get_user(tag_uid)
@@ -171,7 +172,7 @@ class Game(object):
                 logging.debug("Game took {}".format(str(timedelta(seconds=self.time_elapsed))))
 
                 self.buzzer.beep(on_time=1, off_time=0.2, n=2)
-                poolbot.send_result_to_slack(
+                poolbot.send_game_end_message(
                     winner_data['slack_id'],
                     loser_data['slack_id'],
                     str(timedelta(seconds=self.time_elapsed)),
@@ -183,7 +184,7 @@ class Game(object):
             if self.game_can_start and self.uid_belongs_to_current_player(tag_uid):
                 self.buzzer.beep(on_time=2, off_time=0.2, n=1)
                 self.start_time = dt.now()
-                poolbot.send_game_start_to_slack(
+                poolbot.send_game_start_message(
                     *[usr['slack_id'] for usr in self.players.values()]
                 )
 
