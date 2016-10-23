@@ -292,5 +292,5 @@ class TestGame(unittest.TestCase):
         self.assertFalse(self.game.game_can_start)
         self.assertFalse(self.game.game_on)
 
-        self.assertEqual(self.game.buzzer.beep.call_count, 3)
+        self.assertEqual(self.game.buzzer.beep.call_count, 4)
         self.assertEqual(mock_msg_to_slack.call_count, 2)
