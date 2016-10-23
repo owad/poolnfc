@@ -30,6 +30,7 @@ class TestGame(unittest.TestCase):
         poolbot.add_user('lukasz', LUKASZ_UID)
         poolbot.add_user('javiman', JAVIMAN_UID)
         self.game = game_module.Game()
+        self.game.reset_button.is_pressed = False
 
     def tearDown(self):
         os.remove(test_config.DB_FILE_PATH)
@@ -65,7 +66,6 @@ class TestGame(unittest.TestCase):
 
         mock_get_uid.return_value = LUKASZ_UID
 
-        self.game.new_user_button.is_pressed = False
         self.game.main_loop(infinite=False)
 
         mock_get_uid.return_value = None
@@ -116,9 +116,7 @@ class TestGame(unittest.TestCase):
             mock_get_uid,
             mock_msg_to_slack,
     ):
-        self.game.new_user_button.is_pressed = False
         self.assertEqual(self.game.players_count, 0)
-
         mock_get_uid.return_value = LUKASZ_UID
         self.game.main_loop(infinite=False)
         self.assertEqual(self.game.players_count, 1)
@@ -161,7 +159,6 @@ class TestGame(unittest.TestCase):
             mock_msg_to_slack,
     ):
         mock_get_uid.return_value = LUKASZ_UID
-        self.game.new_user_button.is_pressed = False
         self.game.main_loop(infinite=False)
 
         mock_get_uid.return_value = JAVIMAN_UID
@@ -270,5 +267,31 @@ class TestGame(unittest.TestCase):
         self.assertEqual(len(db['lukasz']['uids']), 1)
         db.close()
 
-    def test_third_tag_should_not_trigger_the_start_message(self):
-        pass
+    @mock.patch('poolnfc.poolbot.config', test_config)
+    @mock.patch('poolnfc.poolbot._send_message_to_slack')
+    @mock.patch.object(game_module.Game, 'read_uid')
+    # @mock.patch('poolnfc.game.beep')
+    def test_abandoning_the_game(
+            self,
+            # mock_beep,
+            mock_get_uid,
+            mock_msg_to_slack,
+    ):
+        mock_get_uid.return_value = LUKASZ_UID
+        self.game.reset_button.is_pressed = False
+        self.game.main_loop(infinite=False)
+
+        mock_get_uid.return_value = JAVIMAN_UID
+        self.game.main_loop(infinite=False)
+
+        mock_get_uid.return_value = None
+        self.game.main_loop(infinite=False)
+
+        self.game.reset_button.is_pressed = True
+        self.game.main_loop(infinite=False)
+
+        self.assertEqual(self.game.players_count, 0)
+        self.assertFalse(self.game.game_can_start)
+        self.assertFalse(self.game.game_on)
+        # self.assertEqual(mock_beep.call_count, 4)
+        self.assertEqual(mock_msg_to_slack.call_count, 2)
