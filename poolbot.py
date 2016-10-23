@@ -134,7 +134,7 @@ def add_user(username, nfc_uid):
         found = filter(lambda a: nfc_uid in a[1]['uids'], all_other_users.items())
         if found:
             print nfc_uid
-            print "This NFC tag has been already assigned to {}.".format(found[0][0])
+            print "NFC tag has been already assigned to {}.".format(found[0][0])
             return True
 
         db[username]['uids'].add(nfc_uid)
@@ -147,7 +147,7 @@ def add_user(username, nfc_uid):
         }
 
     db.close()
-    print "This NFC tag has been assigned to {}".format(username)
+    print "NFC tag has been assigned to {}".format(username)
     return True
 
 

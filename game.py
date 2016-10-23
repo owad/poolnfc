@@ -4,6 +4,7 @@ from datetime import datetime as dt, timedelta
 import logging
 from RPi import GPIO
 import signal
+import sys
 
 import gpiozero
 import MFRC522
@@ -96,21 +97,13 @@ class Game(object):
         seconds_since_reg_started = (dt.now() - self.registration_start_time).seconds
         return seconds_since_reg_started > poolbot.config.REGISTRATION_WINDOW and self.players_count < 2
 
-    def new_user_loop(self):
-        start = dt.now()
-        user_added = False
-        loop_time = 0
-
-        self.red_led.blink(0.25, 0.25)
-        print "Switching to the NEW USER LOOP"
-        print "Touch the reader with your NFC tag."
-
-        while loop_time < 15:
-            loop_time = (dt.now() - start).total_seconds()
-            if round(loop_time % .25, 10) == 0:
-                self.red_led.toggle()
-
+    def new_user_loop(self, infinite=True):
+        keep_going = True
+        while keep_going:
+            keep_going = infinite and continue_reading
+            user_added = False
             tag_uid = self.read_uid()
+
             self.buzzer.beep(on_time=0.1, off_time=0.1, n=1)
             if tag_uid:
                 print "NFC UID captured."
@@ -126,13 +119,6 @@ class Game(object):
                     if user_name == '':
                         break
 
-            if user_added:
-                self.buzzer.beep(on_time=2, off_time=0.2, n=2)
-                break
-
-        print "Switching back to the GAME LOOP"
-        self.red_led.off()
-
     def main_loop(self, infinite=True):
 
         keep_going = True
@@ -146,20 +132,22 @@ class Game(object):
 
             if self.reset_button.is_pressed:
                 self.reset()
+                self.buzzer.beep(on_time=0.1, off_time=0.1, n=5)
                 poolbot.set_game_abandoned_message()
 
             try:
                 user_data = poolbot.get_user(tag_uid)
             except IndexError:  # raised when tag_uid is None or user doesn't exist
                 if tag_uid:
-                    logging.debug("NFC tag not recognised or tied with any user.")
+                    logging.debug("NFC tag (%s) not recognised or tied with any user." % tag_uid)
+                    self.buzzer.beep(on_time=0.1, off_time=0.1, n=2)
                 continue
 
             if self.players_count < 2 and tag_uid not in self.players:
                 self.registration_start_time = dt.now()
                 self.players[tag_uid] = user_data
                 logging.debug("{} registered.".format(user_data['username']))
-                self.buzzer.beep(on_time=0.2, off_time=0.2, n=1)
+                self.buzzer.beep(on_time=0.1, off_time=0.1, n=1)
 
             if self.game_on and tag_uid in self.players:  # winner known
                 winner_data = self.players.pop(tag_uid)
@@ -171,7 +159,7 @@ class Game(object):
                 ))
                 logging.debug("Game took {}".format(str(timedelta(seconds=self.time_elapsed))))
 
-                self.buzzer.beep(on_time=1, off_time=0.2, n=2)
+                self.buzzer.beep(on_time=0.5, off_time=0.2, n=2)
                 poolbot.send_game_end_message(
                     winner_data['slack_id'],
                     loser_data['slack_id'],
@@ -182,7 +170,7 @@ class Game(object):
                 logging.debug("====== GAME OVER ======")
 
             if self.game_can_start and self.uid_belongs_to_current_player(tag_uid):
-                self.buzzer.beep(on_time=2, off_time=0.2, n=1)
+                self.buzzer.beep(on_time=0.5, off_time=0.2, n=1)
                 self.start_time = dt.now()
                 poolbot.send_game_start_message(
                     *[usr['slack_id'] for usr in self.players.values()]
@@ -192,4 +180,8 @@ class Game(object):
 if __name__ == "__main__":
     game = Game()
     game.green_led.on()
+
+    if 'new_user' in sys.argv:
+        game.new_user_loop()
+
     game.main_loop()
